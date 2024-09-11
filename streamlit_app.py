@@ -15,13 +15,13 @@ st.write("""
 - After adding team members, click the **Generate Random Update Order** button to display the order based on one of the geographic flows (East to West, West to East, North to South, South to North).
 """)
 
-# Session state to store the list of team members and their locations
+# Initialize the session state for storing team data
 if 'team' not in st.session_state:
     st.session_state.team = {}
 
-# Session state to avoid continuous rerun after JSON upload
-if 'uploaded' not in st.session_state:
-    st.session_state.uploaded = False
+# Initialize state variables to avoid continuous rerun loops
+if 'upload_triggered' not in st.session_state:
+    st.session_state.upload_triggered = False
 
 # Initialize the geolocator with a unique user agent
 geolocator = Nominatim(user_agent="team_member_sort_order")
@@ -79,9 +79,6 @@ with st.sidebar.form(key="team_form"):
         if coordinates:
             st.session_state.team[name] = (location, coordinates)
             st.sidebar.success(f"Added {name} from {location} (Lat: {coordinates[0]}, Lon: {coordinates[1]})")
-            
-            # Clear the form by re-running the script
-            st.rerun()
         else:
             st.sidebar.error(f"Could not find coordinates for '{location}'. Please try again with more details like 'City, State, Country'.")
 
@@ -96,18 +93,16 @@ def download_team_data():
 # Function to upload a JSON file to load team data
 def upload_team_data():
     uploaded_file = st.sidebar.file_uploader("Upload a JSON file", type="json")
-    if uploaded_file and not st.session_state.uploaded:
+    if uploaded_file:
         team_data = json.load(uploaded_file)
         st.session_state.team = {name: tuple(data) for name, data in team_data.items()}
-        st.session_state.uploaded = True  # Mark upload complete
         st.sidebar.success("Team data uploaded successfully!")
-        st.rerun()
 
 # Option to reset the team list in the sidebar
 if st.sidebar.button("Reset Team"):
-    st.session_state.team = {}
-    st.session_state.uploaded = False  # Reset the upload flag
+    st.session_state.team.clear()  # Clears all team members
     st.sidebar.success("Team list reset.")
+    st.rerun()
 
 # Add functionality for downloading team data in the sidebar
 st.sidebar.write("### Save/Load Team Data")
@@ -126,7 +121,6 @@ if st.session_state.team:
         with col2:
             if st.button(f"Remove", key=f"remove_{name}"):
                 del st.session_state.team[name]
-                st.rerun()  # Rerun the app to refresh the list
 else:
     st.write("No team members added yet.")
 
